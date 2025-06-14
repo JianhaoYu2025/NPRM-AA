@@ -1,0 +1,76 @@
+import numpy as np
+from sklearn.metrics import (
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+    roc_auc_score,
+    confusion_matrix,
+    classification_report,
+    multilabel_confusion_matrix
+)
+
+def evaluate_binary_classification(y_true, y_pred_prob, threshold=0.5):
+    """
+    For risk prediction: Evaluate binary classification.
+
+    Parameters:
+        y_true: Ground truth labels (0 or 1)
+        y_pred_prob: Predicted probabilities
+        threshold: Decision threshold for classification
+
+    Returns:
+        dict: Accuracy, Precision, Recall, F1, AUC, Confusion Matrix
+    """
+    y_pred = (np.array(y_pred_prob) >= threshold).astype(int)
+
+    return {
+        "accuracy": accuracy_score(y_true, y_pred),
+        "precision": precision_score(y_true, y_pred),
+        "recall": recall_score(y_true, y_pred),
+        "f1_score": f1_score(y_true, y_pred),
+        "auc": roc_auc_score(y_true, y_pred_prob),
+        "confusion_matrix": confusion_matrix(y_true, y_pred)
+    }
+
+
+def evaluate_multilabel_interventions(y_true, y_pred_prob, threshold=0.5):
+    """
+    For TIRRS: Evaluate multi-label intervention recommendation.
+
+    Parameters:
+        y_true: binary matrix [n_samples, n_labels]
+        y_pred_prob: probability matrix
+        threshold: threshold to binarize outputs
+
+    Returns:
+        dict: average precision, recall, F1, confusion matrix per label
+    """
+    y_pred = (np.array(y_pred_prob) >= threshold).astype(int)
+    return {
+        "precision_macro": precision_score(y_true, y_pred, average='macro', zero_division=0),
+        "recall_macro": recall_score(y_true, y_pred, average='macro', zero_division=0),
+        "f1_macro": f1_score(y_true, y_pred, average='macro', zero_division=0),
+        "multilabel_confusion_matrix": multilabel_confusion_matrix(y_true, y_pred)
+    }
+
+
+def compare_models(base_scores, new_scores, metric="accuracy"):
+    """
+    Compute improvement of new model over baseline.
+
+    Parameters:
+        base_scores: dict of baseline metrics
+        new_scores: dict of new model metrics
+        metric: metric name to compare
+
+    Returns:
+        float: % improvement
+    """
+    if metric not in base_scores or metric not in new_scores:
+        raise ValueError("Metric not found in input score dictionaries")
+
+    base = base_scores[metric]
+    new = new_scores[metric]
+    improvement = ((new - base) / base) * 100 if base > 0 else 0
+    return round(improvement, 2)

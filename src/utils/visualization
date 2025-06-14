@@ -1,0 +1,81 @@
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+import pandas as pd
+from sklearn.metrics import ConfusionMatrixDisplay, multilabel_confusion_matrix
+
+
+def plot_risk_distribution(y_pred_probs, title="Risk Score Distribution"):
+    """
+    Plot predicted risk probabilities histogram from PRIM.
+
+    Parameters:
+        y_pred_probs (list or np.ndarray): Predicted risk scores (0–1)
+    """
+    plt.figure(figsize=(8, 4))
+    sns.histplot(y_pred_probs, bins=20, kde=True, color='crimson')
+    plt.xlabel("Predicted Risk Score")
+    plt.ylabel("Frequency")
+    plt.title(title)
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_binary_confusion_matrix(cm, class_names=["Non-Risk", "High-Risk"]):
+    """
+    Visualize a binary confusion matrix.
+
+    Parameters:
+        cm (array-like): 2x2 confusion matrix
+    """
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=class_names)
+    disp.plot(cmap="Blues", values_format='d')
+    plt.title("Binary Classification Confusion Matrix")
+    plt.grid(False)
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_intervention_heatmap(y_pred_matrix, intervention_labels):
+    """
+    Plot multi-label prediction output as heatmap.
+
+    Parameters:
+        y_pred_matrix (2D array): Predicted interventions [n_samples, n_labels]
+        intervention_labels (list): List of intervention strategy names
+    """
+    avg_scores = np.mean(y_pred_matrix, axis=0)
+    df = pd.DataFrame({"Intervention": intervention_labels, "Mean Activation": avg_scores})
+
+    plt.figure(figsize=(10, 5))
+    sns.barplot(x="Intervention", y="Mean Activation", data=df, palette="viridis")
+    plt.title("Intervention Activation Levels (TIRRS)")
+    plt.ylabel("Mean Probability")
+    plt.xticks(rotation=30)
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_multilabel_confusion_matrices(matrices, labels):
+    """
+    Plot multilabel confusion matrices for each intervention label.
+
+    Parameters:
+        matrices (array): multilabel confusion matrix, shape [n_labels, 2, 2]
+        labels (list): intervention label names
+    """
+    n = len(labels)
+    fig, axes = plt.subplots(1, n, figsize=(4 * n, 4))
+
+    for i, ax in enumerate(np.atleast_1d(axes)):
+        sns.heatmap(matrices[i], annot=True, fmt='d', cmap='Blues', ax=ax, cbar=False,
+                    xticklabels=["Pred 0", "Pred 1"],
+                    yticklabels=["True 0", "True 1"])
+        ax.set_title(labels[i])
+        ax.set_xlabel("Prediction")
+        ax.set_ylabel("Truth")
+
+    plt.suptitle("TIRRS Multilabel Confusion Matrices")
+    plt.tight_layout()
+    plt.show()

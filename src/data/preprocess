@@ -1,0 +1,57 @@
+import pandas as pd
+import numpy as np
+from sklearn.preprocessing import StandardScaler
+from mne import Epochs, find_events
+
+def preprocess_eeg(raw, event_id: dict, tmin=-0.2, tmax=0.8):
+    """
+    Convert raw EEG to epochs around given events.
+
+    Parameters:
+        raw: mne.io.Raw object
+        event_id: event labels (e.g., {'aggression': 1})
+        tmin: start time relative to event
+        tmax: end time relative to event
+
+    Returns:
+        epochs: mne.Epochs
+    """
+    events = find_events(raw, stim_channel='STI 014', verbose=False)
+    epochs = Epochs(raw, events, event_id=event_id, tmin=tmin, tmax=tmax,
+                    baseline=(None, 0), preload=True)
+    return epochs
+
+
+def scale_features(df: pd.DataFrame, numeric_cols=None):
+    """
+    Standardize selected numeric features.
+
+    Parameters:
+        df (pd.DataFrame): input data
+        numeric_cols (list): which columns to normalize
+
+    Returns:
+        pd.DataFrame
+    """
+    if numeric_cols is None:
+        numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
+
+    scaler = StandardScaler()
+    df[numeric_cols] = scaler.fit_transform(df[numeric_cols])
+    return df
+
+
+def impute_missing(df: pd.DataFrame):
+    """
+    Impute missing values using median strategy.
+
+    Parameters:
+        df (pd.DataFrame)
+
+    Returns:
+        pd.DataFrame
+    """
+    for col in df.columns:
+        if df[col].isnull().any():
+            df[col].fillna(df[col].median(), inplace=True)
+    return df

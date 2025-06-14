@@ -1,0 +1,39 @@
+import torch
+import numpy as np
+from src.models.prim_model import PRIM
+from src.models.tirrs_module import TIRRSModule
+from src.evaluation.metrics import evaluate_binary_classification, evaluate_multilabel_interventions
+from src.utils.visualization import (
+    plot_risk_distribution, plot_binary_confusion_matrix,
+    plot_intervention_heatmap, plot_multilabel_confusion_matrices
+)
+
+# ----- Synthetic example data -----
+N = 100
+risk_scores = np.random.rand(N)
+true_risk_labels = np.random.randint(0, 2, size=N)
+
+# Binary classification evaluation
+risk_metrics = evaluate_binary_classification(true_risk_labels, risk_scores)
+print("PRIM Risk Prediction Evaluation:")
+for k, v in risk_metrics.items():
+    if k != "confusion_matrix":
+        print(f"{k}: {v:.4f}")
+
+# Visualization
+plot_risk_distribution(risk_scores)
+plot_binary_confusion_matrix(risk_metrics["confusion_matrix"])
+
+# TIRRS evaluation
+true_interventions = np.random.randint(0, 2, size=(N, 5))
+predicted_interventions = np.random.rand(N, 5)
+
+intervention_metrics = evaluate_multilabel_interventions(true_interventions, predicted_interventions)
+print("\nTIRRS Intervention Recommendation Evaluation:")
+for k, v in intervention_metrics.items():
+    if k != "multilabel_confusion_matrix":
+        print(f"{k}: {v:.4f}")
+
+plot_intervention_heatmap(predicted_interventions, ["Therapy", "CBT", "Peer", "Family", "Alert"])
+plot_multilabel_confusion_matrices(intervention_metrics["multilabel_confusion_matrix"],
+                                   ["Therapy", "CBT", "Peer", "Family", "Alert"])

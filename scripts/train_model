@@ -1,0 +1,59 @@
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader, TensorDataset
+import numpy as np
+from src.models.prim_model import PRIM
+from src.models.tirrs_module import TIRRSModule
+from src.evaluation.metrics import evaluate_binary_classification
+from sklearn.model_selection import train_test_split
+
+# -------- Dummy synthetic data (replace with real data loading) --------
+N = 500
+eeg_data = np.random.rand(N, 128)
+psych_data = np.random.rand(N, 10)
+socio_data = np.random.rand(N, 6)
+risk_labels = np.random.randint(0, 2, size=N)
+intervention_context = np.random.rand(N, 4)
+
+# Convert to tensors
+X_eeg = torch.tensor(eeg_data, dtype=torch.float32)
+X_psych = torch.tensor(psych_data, dtype=torch.float32)
+X_socio = torch.tensor(socio_data, dtype=torch.float32)
+y_risk = torch.tensor(risk_labels, dtype=torch.float32).unsqueeze(1)
+X_context = torch.tensor(intervention_context, dtype=torch.float32)
+
+# Split data
+train_idx, val_idx = train_test_split(np.arange(N), test_size=0.2, random_state=42)
+
+# Models
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+prim = PRIM().to(device)
+tirrs = TIRRSModule().to(device)
+
+optimizer = torch.optim.Adam(list(prim.parameters()) + list(tirrs.parameters()), lr=1e-3)
+criterion = nn.BCELoss()
+
+# Training
+epochs = 10
+for epoch in range(epochs):
+    prim.train()
+    tirrs.train()
+
+    inputs = [X_eeg[train_idx].to(device), X_psych[train_idx].to(device), X_socio[train_idx].to(device)]
+    context = X_context[train_idx].to(device)
+    targets = y_risk[train_idx].to(device)
+
+    optimizer.zero_grad()
+    risk_out = prim(*inputs)
+    loss = criterion(risk_out, targets)
+    loss.backward()
+    optimizer.step()
+
+    with torch.no_grad():
+        prim.eval()
+        val_inputs = [X_eeg[val_idx].to(device), X_psych[val_idx].to(device), X_socio[val_idx].to(device)]
+        val_targets = y_risk[val_idx].to(device)
+        val_out = prim(*val_inputs).cpu().numpy()
+        val_true = val_targets.cpu().numpy()
+        metrics = evaluate_binary_classification(val_true, val_out)
+        print(f"Epoch {epoch+1} | Loss: {loss.item():.4f} | Val Accuracy: {metrics['accuracy']:.4f} | F1: {metrics['f1_score']:.4f}")

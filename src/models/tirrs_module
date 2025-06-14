@@ -1,0 +1,38 @@
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+class TIRRSModule(nn.Module):
+    """
+    Targeted Intervention & Risk Reduction Strategy (TIRRS)
+
+    Input:
+    - Current risk score from PRIM
+    - Intervention history or context (optional)
+
+    Output:
+    - Intervention recommendation vector (multi-label)
+    """
+
+    def __init__(self, input_dim=1, context_dim=4, output_dim=5, hidden_dim=32):
+        super(TIRRSModule, self).__init__()
+        self.model = nn.Sequential(
+            nn.Linear(input_dim + context_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Dropout(0.1),
+            nn.Linear(hidden_dim, output_dim),
+            nn.Sigmoid()  # Multi-label: probabilities for interventions
+        )
+
+    def forward(self, risk_score, context_vector):
+        """
+        Parameters:
+        - risk_score: [B, 1] from PRIM
+        - context_vector: [B, context_dim], e.g., past compliance, school status
+
+        Returns:
+        - interventions: [B, output_dim], e.g.,
+            [therapy, peer support, family program, CBT, alert]
+        """
+        x = torch.cat([risk_score, context_vector], dim=1)
+        return self.model(x)

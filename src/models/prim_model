@@ -1,0 +1,46 @@
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+class PRIM(nn.Module):
+    """
+    Psycho-Social Risk Interaction Model (PRIM)
+
+    Inputs:
+    - EEG features (time/frequency domain)
+    - Psychological traits (e.g., impulsivity, aggression scale)
+    - Social-environmental features (e.g., family stress, SES)
+
+    Output:
+    - Risk prediction score (e.g., violent behavior likelihood)
+    """
+
+    def __init__(self, eeg_dim=128, psych_dim=10, socio_dim=6, hidden_dim=64):
+        super(PRIM, self).__init__()
+        self.eeg_branch = nn.Sequential(
+            nn.Linear(eeg_dim, hidden_dim),
+            nn.ReLU()
+        )
+        self.psych_branch = nn.Sequential(
+            nn.Linear(psych_dim, hidden_dim),
+            nn.ReLU()
+        )
+        self.socio_branch = nn.Sequential(
+            nn.Linear(socio_dim, hidden_dim),
+            nn.ReLU()
+        )
+        self.fusion = nn.Sequential(
+            nn.Linear(hidden_dim * 3, 64),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(64, 1),
+            nn.Sigmoid()  # Binary risk score (0–1)
+        )
+
+    def forward(self, eeg_input, psych_input, socio_input):
+        eeg_out = self.eeg_branch(eeg_input)
+        psych_out = self.psych_branch(psych_input)
+        socio_out = self.socio_branch(socio_input)
+
+        combined = torch.cat([eeg_out, psych_out, socio_out], dim=1)
+        return self.fusion(combined)
